@@ -1,0 +1,42 @@
+body {
+  margin: 0;
+  background: #111;
+  color: white;
+  font-family: Arial;
+}
+.center {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.big {
+  font-size: 50px;
+  animation: pop 1.5s ease;
+}
+@keyframes pop {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+.card {
+  width: 300px;
+  margin: 100px auto;
+  padding: 20px;
+  background: #222;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+button {
+  padding: 10px;
+  background: crimson;
+  color: white;
+  border: none;
+  border-radius: 5px;
+}
+p {
+  cursor: pointer;
+  color: lightblue;
+}

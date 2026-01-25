@@ -1,0 +1,202 @@
+/* ================================
+   ROLE PAGE
+================================ */
+.role-page {
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #979395, #fff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+/* ================================
+   MAIN CARD
+================================ */
+.role-card {
+  width: 100%;
+  max-width: 1000px;
+  background: #f5f5f5;
+  border-radius: 22px;
+  padding: 60px 40px 50px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ================================
+   SLIDER
+================================ */
+.slider {
+  display: flex;
+  width: 200%;
+  transition: transform 0.6s ease-in-out;
+}
+
+.slider.step-1 {
+  transform: translateX(0%);
+}
+
+.slider.step-2 {
+  transform: translateX(-50%);
+}
+
+/* ================================
+   EACH SLIDE (CRITICAL FIX)
+================================ */
+.slide {
+  width: 50%;              /* ✅ MUST BE 50% */
+  flex-shrink: 0;
+  padding: 0 40px;
+  box-sizing: border-box;
+}
+
+/* ================================
+   TITLE
+================================ */
+.role-title {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #b91c1c;
+  margin-bottom: 50px;
+}
+
+/* ================================
+   ROLE OPTIONS
+================================ */
+.role-options {
+  display: flex;
+  justify-content: center;
+  gap: 80px;
+}
+
+/* ================================
+   ROLE CIRCLE
+================================ */
+.role-circle {
+  width: 150px;
+  height: 150px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.35s ease;
+}
+
+.role-circle img {
+  width: 48px;
+  height: 48px;
+  opacity: 0.85;
+}
+
+.role-circle span {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.role-circle:hover {
+  transform: translateY(-10px) scale(1.05);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.25);
+}
+
+/* ================================
+   RULES / GUIDELINES
+================================ */
+.rules {
+  list-style: none;
+  padding: 0;
+  max-width: 480px;
+  margin: 0 auto 40px;
+}
+
+.rules li {
+  font-size: 0.95rem;
+  padding: 12px 0;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ================================
+   BUTTON
+================================ */
+.next-btn {
+  display: block;
+  margin: 0 auto;
+  padding: 14px 40px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  border-radius: 30px;
+  border: none;
+  background: #2563eb;
+  color: #ffffff;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.next-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+}
+
+/* ================================
+   SKIP LINK
+================================ */
+.skip {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.skip:hover {
+  text-decoration: underline;
+}
+
+/* ================================
+   DOTS
+================================ */
+.dots {
+  display: flex;
+  justify-content: center;
+  margin-top: 35px;
+}
+
+.dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d1d5db;
+  margin: 0 6px;
+  transition: 0.3s ease;
+  cursor: pointer;
+}
+
+.dots span.active {
+  background: #2563eb;
+  transform: scale(1.25);
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+@media (max-width: 768px) {
+  .role-options {
+    flex-direction: column;
+    gap: 30px;
+  }
+
+  .slide {
+    padding: 0 15px;
+  }
+}

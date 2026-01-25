@@ -1,0 +1,127 @@
+/* RESET */
+* {
+  box-sizing: border-box;
+  font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+/* PAGE BACKGROUND */
+.register-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #6d5dfc, #8b7bff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* MAIN CONTAINER */
+.register-container {
+  width: 900px;
+  min-height: 620px;  /* responsive height */
+  background: #ffffff;
+  border-radius: 18px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+}
+
+/* LEFT PANEL */
+.register-left {
+  flex: 1;
+  background: linear-gradient(135deg, #7c6df2, #9b8cff);
+  color: #fff;
+  padding: 60px 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.register-left h1 {
+  font-size: 34px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.register-left p {
+  font-size: 15px;
+  opacity: 0.9;
+  line-height: 1.6;
+}
+
+/* RIGHT PANEL */
+.register-right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* CARD */
+.card {
+  width: 100%;
+  max-width: 340px;
+}
+
+.card h2 {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 28px;
+  color: #111827;
+  text-transform: capitalize;
+}
+
+/* INPUTS */
+.card input,
+.card select {
+  width: 100%;
+  padding: 13px 14px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.card input:focus,
+.card select:focus {
+  outline: none;
+  border-color: #6d5dfc;
+  box-shadow: 0 0 0 3px rgba(109, 93, 252, 0.15);
+}
+
+/* BUTTON */
+.card button {
+  width: 100%;
+  padding: 13px;
+  border-radius: 30px;
+  border: none;
+  background: linear-gradient(135deg, #6d5dfc, #8b7bff);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px rgba(109, 93, 252, 0.35);
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .register-container {
+    width: 95%;
+    height: auto;
+    flex-direction: column;
+  }
+
+  .register-left {
+    padding: 40px;
+    text-align: center;
+  }
+
+  .register-right {
+    padding: 40px 0;
+  }
+}

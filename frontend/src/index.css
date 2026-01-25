@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FULL PAGE CONTROL */
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+}
+
+
+/* Optional: better default look */
+body {
+  @apply bg-gray-100 text-gray-800 antialiased;
+}
+@layer base {
+  html {
+    font-size: 16px;
+  }
+
+  @media (min-width: 1920px) {
+    html {
+      font-size: 18px;
+    }
+  }
+
+  @media (min-width: 2560px) {
+    html {
+      font-size: 20px;
+    }
+  }
+}

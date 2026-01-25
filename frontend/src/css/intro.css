@@ -1,0 +1,82 @@
+/* ===============================
+   INTRO PAGE ONLY
+================================ */
+.intro-page {
+  min-height: 100vh;
+  background: url("/public/int.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+/* Soft gradient overlay */
+.intro-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom right,
+    rgba(255, 255, 255, 0.75),
+    rgba(255, 235, 238, 0.85)
+  );
+}
+
+/* Glass card */
+.intro-card {
+  position: relative;
+  z-index: 2;
+  padding: 70px 90px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18);
+  text-align: center;
+  animation: fadeUp 1.4s ease-out;
+}
+
+/* Title */
+.intro-title {
+  font-size: 3.8rem;
+  font-weight: 800;
+  color: #b91c1c;
+  margin-bottom: 14px;
+}
+
+/* Tagline */
+.intro-tagline {
+  font-size: 1.4rem;
+  color: #374151;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+}
+
+/* Entrance animation */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .intro-card {
+    padding: 50px 35px;
+  }
+
+  .intro-title {
+    font-size: 2.6rem;
+  }
+
+  .intro-tagline {
+    font-size: 1.1rem;
+  }
+}
