@@ -1,223 +1,239 @@
-/* ===== BASE ===== */
-* {
-  box-sizing: border-box;
-}
+/* ================= GLOBAL ================= */
 
 body {
   margin: 0;
-  background: #f6f7fb;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-  color: #1f2937;
+  font-family: "Segoe UI", sans-serif;
+  background: linear-gradient(135deg, #eef2f7, #dbe7ff);
 }
 
-/* ===== PAGE LAYOUT ===== */
 .user-layout {
-  min-height: 100vh;
+  display: flex;
+  height: 100vh;
 }
 
-/* ===== SIDEBAR ===== */
+/* ================= SIDEBAR ================= */
+
 .sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 230px;
-  height: 100vh;
-  background: #0f172a;
-  padding: 20px 14px;
+  width: 240px;
+  background: linear-gradient(180deg, #0f172a, #1e293b);
+  color: white;
+  padding: 25px 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .sidebar h2 {
-  color: #38bdf8;
+  margin-bottom: 30px;
   text-align: center;
-  margin-bottom: 20px;
+  font-weight: 600;
+  letter-spacing: 1px;
 }
 
 .sidebar button {
-  width: 100%;
-  padding: 11px;
-  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.05);
   border: none;
+  padding: 12px;
+  margin-bottom: 12px;
   border-radius: 8px;
-  background: #1e293b;
-  color: #fff;
+  color: white;
   cursor: pointer;
+  transition: 0.3s ease;
   font-size: 14px;
 }
 
 .sidebar button:hover {
-  background: #334155;
+  background: #2563eb;
+  transform: translateX(4px);
 }
 
-.sidebar .logout {
-  background: #dc2626;
-  margin-top: 20px;
+.sidebar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
-/* ===== MAIN CONTENT ===== */
+.logout {
+  margin-top: auto;
+  background: #dc2626 !important;
+}
+
+.logout:hover {
+  background: #b91c1c !important;
+}
+
+/* ================= MAIN ================= */
+
 .main-content {
-  margin-left: 230px;
-  padding: 30px 20px;
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
 }
 
-.main-content .card,
-.main-content .info {
-  margin-left: auto;
-  margin-right: auto;
-}
+/* ================= CARD ================= */
 
-/* ===== INFO MESSAGE ===== */
-.info {
-  max-width: 420px;
-  background: #e0f2fe;
-  padding: 10px 14px;
-  border-left: 4px solid #0284c7;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-size: 14px;
-}
-
-/* ===== CARD ===== */
 .card {
-  max-width: 600px;
-  background: #ffffff;
-  padding: 20px;
-  border-radius: 14px;
-  margin-bottom: 22px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
+  padding: 35px;
+  max-width: 700px;
+  margin: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  animation: fadeIn 0.4s ease;
 }
 
 .card h2 {
-  margin-bottom: 16px;
-  font-size: 18px;
+  margin-bottom: 25px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
-/* ===== FORM INPUTS ===== */
+/* ================= FORM ================= */
+
 .card input,
 .card select {
   width: 100%;
-  padding: 10px 12px;
-  margin-bottom: 12px;
+  padding: 12px 14px;
+  margin-bottom: 15px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
+  outline: none;
   font-size: 14px;
+  transition: 0.3s ease;
 }
 
 .card input:focus,
 .card select:focus {
-  outline: none;
   border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
-/* ===== DEFAULT CARD BUTTON ===== */
-.card > button {
+.card button {
   width: 100%;
-  padding: 11px;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 30px;
   border: none;
-  background: #2563eb;
-  color: #fff;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  color: white;
+  font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
-  font-size: 14px;
+  transition: 0.3s ease;
 }
 
-.card > button:hover {
-  background: #1d4ed8;
+.card button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
 }
 
-/* ===== HISTORY ROW (ONE LINE) ===== */
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 0;
-  border-bottom: 1px solid #e5e7eb;
-  font-size: 14px;
+.card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-/* left content */
-.row-left {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
+/* ================= STOCK LIST ================= */
 
-.row-left span {
-  white-space: nowrap;
-}
-
-/* right buttons */
-.row-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* row buttons only */
-.row-right button {
-  width: auto;
-  padding: 6px 14px;
-  font-size: 13px;
-  border-radius: 6px;
-}
-
-/* ===== HISTORY DETAILS ===== */
-.history-details {
-  margin-top: 10px;
-  padding: 12px;
+.summary {
   background: #f8fafc;
+  padding: 15px;
   border-radius: 10px;
+  margin-bottom: 25px;
+  line-height: 1.8;
+  font-size: 14px;
 }
 
-.detail-row {
-  padding: 10px 0;
-  border-bottom: 1px dashed #cbd5f5;
-  font-size: 13px;
+.stock-item,
+.donor-item {
+  background: #f9fbff;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.detail-row:last-child {
-  border-bottom: none;
-}
-
-/* ===== CANCEL BUTTON ===== */
-.cancel-btn {
-  width: auto;              /* no stretching */
-  min-width: unset;         /* remove forced width */
-  padding: 6px 18px;        /* smaller height */
-  margin: 10px auto 0;
-  display: inline-block;    /* IMPORTANT */
-  font-size: 13px;
+.stock-item div,
+.donor-item div {
+  margin-bottom: 10px;
   font-weight: 500;
-  border-radius: 6px;       /* not pill */
-  background: #c72121;
+}
+
+.stock-item input {
+  margin-bottom: 10px;
+}
+
+/* ================= HISTORY ================= */
+
+.history-item {
+  background: #f9fbff;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 15px 20px;
+  cursor: pointer;
+  font-weight: 500;
+  background: #eef2ff;
+  transition: 0.3s ease;
+}
+
+.history-header:hover {
+  background: #dbeafe;
+}
+
+.history-details {
+  padding: 20px;
+  font-size: 14px;
+  animation: slideDown 0.3s ease;
+}
+
+/* ================= STATUS BADGES ================= */
+
+.status {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status.Pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status.Accepted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.Rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* ================= CANCEL BUTTON ================= */
+
+.cancel-btn {
+  margin-top: 12px;
+  background: #ef4444 !important;
 }
 
 .cancel-btn:hover {
-  background: #b91c1c;
+  background: #dc2626 !important;
 }
 
+/* ================= ANIMATIONS ================= */
 
-/* ===== MOBILE ===== */
-@media (max-width: 700px) {
-  .sidebar {
-    display: none;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-  .main-content {
-    margin-left: 0;
-    padding: 20px 12px;
-  }
-
-  .card {
-    max-width: 100%;
-  }
-
-  .row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .row-right {
-    align-self: flex-end;
-  }
+@keyframes slideDown {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; }
 }
