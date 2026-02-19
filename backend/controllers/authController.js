@@ -12,13 +12,18 @@ const makeToken = (id, role) =>
 /* ================= USER REGISTER ================= */
 const userRegister = async (req, res) => {
   try {
-    const { username, email, password, mobileNumber, address, age ,city} = req.body;
+    const { username, email, password, mobileNumber, address, age, city } = req.body;
 
     if (!username || !email || !password || !mobileNumber || !address || !age || !city) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const exist = await User.findOne({ email });
+    const numericAge = Number(age);
+    if (isNaN(numericAge) || numericAge <= 0) {
+      return res.status(400).json({ message: "Invalid age value" });
+    }
+
+    const exist = await User.findOne({ email: email.toLowerCase().trim() });
     if (exist) return res.status(400).json({ message: "Email already exists" });
 
     const hash = await bcrypt.hash(password, 10);
@@ -29,7 +34,7 @@ const userRegister = async (req, res) => {
       password: hash,
       mobileNumber,
       address: address.trim(),
-      age,
+      age: numericAge,
       city: city.trim(),
     });
 
@@ -37,6 +42,7 @@ const userRegister = async (req, res) => {
       message: "User registered",
       token: makeToken(user._id, "USER"),
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "User register failed" });
@@ -46,19 +52,18 @@ const userRegister = async (req, res) => {
 /* ================= DONOR REGISTER ================= */
 const donorRegister = async (req, res) => {
   try {
-   const {
-  username,
-  email,
-  password,
-  bloodGroup,
-  mobileNumber,
-  address,
-  age,
-  city,
-  lastDonationDate
-} = req.body;
-
-
+    const {
+      username,
+      email,
+      password,
+      bloodGroup,
+      mobileNumber,
+      address,
+      age,
+      city,
+      isNewDonor,
+      lastDonationDate
+    } = req.body;
 
     if (
       !username ||
@@ -67,13 +72,56 @@ const donorRegister = async (req, res) => {
       !bloodGroup ||
       !mobileNumber ||
       !address ||
-      !age || !city
+      !age ||
+      !city ||
+      isNewDonor === undefined
     ) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    const exist = await Donor.findOne({ email });
-    if (exist) return res.status(400).json({ message: "Email already exists" });
+    const numericAge = Number(age);
+
+    // ✅ AGE VALIDATION
+    if (isNaN(numericAge) || numericAge < 18) {
+      return res.status(400).json({
+        message: "Donor must be at least 18 years old"
+      });
+    }
+
+    if (numericAge > 60) {
+      return res.status(400).json({
+        message: "Donor age must be below 60"
+      });
+    }
+
+    const exist = await Donor.findOne({ email: email.toLowerCase().trim() });
+    if (exist) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    let donationDate = null;
+
+    // ✅ If NOT new donor → require lastDonationDate
+    if (!isNewDonor) {
+      if (!lastDonationDate) {
+        return res.status(400).json({
+          message: "Last donation date is required"
+        });
+      }
+
+      donationDate = new Date(lastDonationDate);
+
+      const today = new Date();
+      const diffDays =
+        (today - donationDate) / (1000 * 60 * 60 * 24);
+
+      // ✅ 56-day rule (8 weeks)
+      if (diffDays < 56) {
+        return res.status(400).json({
+          message: "You must wait 56 days between donations"
+        });
+      }
+    }
 
     const hash = await bcrypt.hash(password, 10);
 
@@ -84,15 +132,17 @@ const donorRegister = async (req, res) => {
       bloodGroup,
       mobileNumber,
       address: address.trim(),
-      age,
+      age: numericAge,
       city: city.trim(),
-      lastDonationDate: lastDonationDate ? new Date(lastDonationDate) : null,
+      isNewDonor,
+      lastDonationDate: donationDate,
     });
 
     res.json({
-      message: "Donor registered",
+      message: "Donor registered successfully",
       token: makeToken(donor._id, "DONOR"),
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Donor register failed" });
@@ -119,6 +169,7 @@ const adminLogin = async (req, res) => {
     );
 
     res.json({ message: "Admin login successful", token });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Admin login failed" });
@@ -140,14 +191,17 @@ const login = async (req, res) => {
 
     const Model = role === "USER" ? User : Donor;
 
-    // must include password because schema has select:false
-    const user = await Model.findOne({ email }).select("+password");
+    const user = await Model.findOne({
+      email: email.toLowerCase().trim()
+    }).select("+password");
+
     if (!user) return res.status(400).json({ message: "User not found" });
 
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(400).json({ message: "Wrong password" });
 
     res.json({ token: makeToken(user._id, role) });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Login failed" });

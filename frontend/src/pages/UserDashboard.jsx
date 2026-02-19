@@ -1,4 +1,3 @@
-// src/pages/UserDashboard.jsx
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useNavigate } from "react-router-dom";
@@ -11,15 +10,16 @@ export default function UserDashboard() {
   const token = localStorage.getItem("token");
 
   const [view, setView] = useState("create");
-  const [openHistory, setOpenHistory] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [infoMsg, setInfoMsg] = useState("");
+  const [openHistory, setOpenHistory] = useState(null);
 
   const [form, setForm] = useState({
     city: "",
     bloodGroup: "",
     units: "",
     hospital: "",
-    neededDate: "",
+    requiredDate: "",
     patientName: "",
     contact: ""
   });
@@ -29,7 +29,8 @@ export default function UserDashboard() {
   const [requests, setRequests] = useState([]);
   const [stockUnits, setStockUnits] = useState({});
 
-  // ================= LOAD =================
+  /* ================= LOAD DATA ================= */
+
   const loadAll = async () => {
     try {
       const s = await api("/api/receivers/compatible-stock", "GET", null, token);
@@ -40,26 +41,28 @@ export default function UserDashboard() {
       setDonors(Array.isArray(d) ? d : []);
       setRequests(Array.isArray(h) ? h : []);
     } catch (e) {
-      console.log("Load error", e);
+      console.log("Load error:", e);
     }
   };
 
   useEffect(() => {
-    loadAll();
+    if (token) loadAll();
   }, [view]);
 
-  // ================= MAIN USER REQUEST =================
+  /* ================= MAIN REQUEST ================= */
+
   const mainReq =
     requests
       .filter(r => r.requestType === "USER")
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] || null;
 
   const activeChildReqs = mainReq
-    ? requests.filter(r =>
+    ? requests.filter(
+      r =>
         ["ADMIN", "DONOR"].includes(r.requestType) &&
         String(r.parentRequestId) === String(mainReq._id) &&
         ["Pending", "Accepted"].includes(r.status)
-      )
+    )
     : [];
 
   const requestedTotal = activeChildReqs.reduce(
@@ -71,67 +74,90 @@ export default function UserDashboard() {
     ? Math.max(Number(mainReq.units) - requestedTotal, 0)
     : 0;
 
-  // ================= CREATE =================
-  const sendRequest = async () => {
-    const { bloodGroup, units, hospital, neededDate, patientName, contact, city } = form;
+  /* ================= CREATE REQUEST ================= */
 
-    if (!bloodGroup || !units || !hospital || !neededDate || !patientName || !contact || !city)
-      return alert("Fill all fields");
+  const sendRequest = async () => {
+    const { bloodGroup, units, hospital, requiredDate, patientName, contact, city } = form;
+
+    if (!bloodGroup || !units || !hospital || !requiredDate || !patientName || !contact || !city)
+      return alert("Please fill all fields");
 
     if (loading) return;
     setLoading(true);
 
-    await api("/api/receivers/request-blood", "POST", {
-      ...form,
-      units: Number(units)
-    }, token);
+    try {
+      await api(
+        "/api/receivers/request-blood",
+        "POST",
+        {
+          ...form,
+          units: Number(units)
+        },
+        token
+      );
 
-    setForm({
-      city: "",
-      bloodGroup: "",
-      units: "",
-      hospital: "",
-      neededDate: "",
-      patientName: "",
-      contact: ""
-    });
+      setForm({
+        city: "",
+        bloodGroup: "",
+        units: "",
+        hospital: "",
+        requiredDate: "",
+        patientName: "",
+        contact: ""
+      });
 
-    setView("stock");
+      setView("stock");
+      setInfoMsg("Requirement created successfully");
+      loadAll();
+    } catch {
+      alert("Error creating request");
+    }
+
     setLoading(false);
-    loadAll();
   };
 
-  // ================= STOCK REQUEST =================
-  const sendStockRequest = async (stock) => {
+  /* ================= STOCK REQUEST ================= */
+
+  const sendStockRequest = async stock => {
     const units = Number(stockUnits[stock._id]);
+
     if (!units || units <= 0) return alert("Enter valid units");
     if (units > remaining) return alert(`Only ${remaining} units remaining`);
 
-    await api("/api/receivers/request-from-stock", "POST", {
-      stockId: stock._id,
-      bloodGroup: stock.bloodGroup,
-      units
-    }, token);
+    await api(
+      "/api/receivers/request-from-stock",
+      "POST",
+      { stockId: stock._id, units },
+      token
+    );
 
     setStockUnits(p => ({ ...p, [stock._id]: "" }));
+    setInfoMsg("Request sent to admin");
     loadAll();
   };
 
-  // ================= DONOR REQUEST =================
-  const sendDonorRequest = async (donor) => {
-    if (remaining === 0) return alert("No units remaining");
+  /* ================= DONOR REQUEST ================= */
 
-    await api("/api/receivers/request-from-donor", "POST", {
-      donorId: donor._id,
-      bloodGroup: donor.bloodGroup,
-      units: 1
-    }, token);
+  const sendDonorRequest = async donor => {
+    if (remaining === 0) return;
 
+    await api(
+      "/api/receivers/request-from-donor",
+      "POST",
+      { donorId: donor._id },
+      token
+    );
+
+    setInfoMsg("Request sent to donor");
     loadAll();
   };
 
-  const cancelRequest = async (id) => {
-    if (!window.confirm("Cancel this request?")) return;
+  /* ================= CANCEL ================= */
+
+  const cancelRequest = async id => {
+    const ok = window.confirm("Cancel this request?");
+    if (!ok) return;
+
     await api(`/api/receivers/cancel/${id}`, "DELETE", null, token);
     loadAll();
   };
@@ -141,7 +167,8 @@ export default function UserDashboard() {
     nav("/");
   };
 
-  // ================= UI =================
+  /* ================= UI ================= */
+
   return (
     <div className="user-layout">
       <div className="sidebar">
@@ -151,45 +178,71 @@ export default function UserDashboard() {
           Stock & Donors
         </button>
         <button onClick={() => setView("history")}>History</button>
-        <button className="logout" onClick={logout}>Logout</button>
+        <button className="logout" onClick={logout}>
+          Logout
+        </button>
       </div>
 
       <div className="main-content">
+        {infoMsg && <p className="info">{infoMsg}</p>}
 
-        {/* CREATE */}
+        {/* ================= CREATE ================= */}
         {view === "create" && (
           <div className="card">
             <h2>Create Blood Requirement</h2>
 
-            <input placeholder="Patient Name"
+            <input
+              placeholder="Patient Name"
               value={form.patientName}
-              onChange={e => setForm({ ...form, patientName: e.target.value })} />
+              onChange={e =>
+                setForm({ ...form, patientName: e.target.value })
+              }
+            />
 
-            <input placeholder="Contact"
+            <input
+              placeholder="Contact"
               value={form.contact}
-              onChange={e => setForm({ ...form, contact: e.target.value })} />
+              onChange={e => setForm({ ...form, contact: e.target.value })}
+            />
 
-            <select value={form.bloodGroup}
-              onChange={e => setForm({ ...form, bloodGroup: e.target.value })}>
+            <select
+              value={form.bloodGroup}
+              onChange={e =>
+                setForm({ ...form, bloodGroup: e.target.value })
+              }
+            >
               <option value="">Blood Group</option>
-              {BLOOD_GROUPS.map(b => <option key={b}>{b}</option>)}
+              {BLOOD_GROUPS.map(b => (
+                <option key={b}>{b}</option>
+              ))}
             </select>
 
-            <input type="number" placeholder="Units"
+            <input
+              type="number"
+              placeholder="Units"
               value={form.units}
-              onChange={e => setForm({ ...form, units: e.target.value })} />
+              onChange={e => setForm({ ...form, units: e.target.value })}
+            />
 
-            <input type="date"
-              value={form.neededDate}
-              onChange={e => setForm({ ...form, neededDate: e.target.value })} />
+            <input
+              type="date"
+              value={form.requiredDate}
+              onChange={e =>
+                setForm({ ...form, requiredDate: e.target.value })
+              }
+            />
 
-            <input placeholder="Hospital"
+            <input
+              placeholder="Hospital"
               value={form.hospital}
-              onChange={e => setForm({ ...form, hospital: e.target.value })} />
+              onChange={e => setForm({ ...form, hospital: e.target.value })}
+            />
 
-            <input placeholder="City"
+            <input
+              placeholder="City"
               value={form.city}
-              onChange={e => setForm({ ...form, city: e.target.value })} />
+              onChange={e => setForm({ ...form, city: e.target.value })}
+            />
 
             <button disabled={loading} onClick={sendRequest}>
               {loading ? "Saving..." : "Save Requirement"}
@@ -197,102 +250,168 @@ export default function UserDashboard() {
           </div>
         )}
 
-        {/* STOCK & DONORS */}
+        {/* ================= STOCK & DONORS ================= */}
         {view === "stock" && mainReq && (
-          <div className="card">
-            <h2>Stock & Donors</h2>
-
-            <div className="summary">
-              <p><b>Blood Group:</b> {mainReq.bloodGroup}</p>
-              <p><b>Total Needed:</b> {mainReq.units}</p>
-              <p><b>Requested:</b> {requestedTotal}</p>
-              <p><b>Remaining:</b> {remaining}</p>
+          <>
+            <div className="card highlight">
+              <p><strong>Blood:</strong> {mainReq.bloodGroup}</p>
+              <p><strong>Total Needed:</strong> {mainReq.units}</p>
+              <p><strong>Requested:</strong> {requestedTotal}</p>
+              <p><strong>Remaining:</strong> {remaining}</p>
             </div>
 
-            <h3>Available Stock</h3>
-            {stocks.map(stock => (
-              <div key={stock._id} className="stock-item">
-                <div>
-                  {stock.bloodGroup} • {stock.units} Units
+            <div className="card">
+              <h2>Compatible Stock</h2>
+
+              {stocks.map(stock => {
+                const related = requests.filter(
+                  r =>
+                    String(r.stockId) === String(stock._id) &&
+                    ["Pending", "Accepted"].includes(r.status)
+                );
+
+                const totalFromStock = related.reduce(
+                  (sum, r) => sum + Number(r.units || 0),
+                  0
+                );
+
+                const pendingReq = related.find(r => r.status === "Pending");
+
+                return (
+                  <div key={stock._id} className="row">
+                    <span>{stock.bloodGroup}</span>
+                    <span>{stock.units} units available</span>
+
+                    {related.length > 0 ? (
+                      <div className="stock-status">
+                        <span>Requested: {totalFromStock} units</span>
+
+                        {pendingReq ? (
+                          <>
+                            <span>Status: Pending</span>
+                            <button
+                              className="cancel-btn"
+                              onClick={() => cancelRequest(pendingReq._id)}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <span className="accepted">Status: Accepted</span>
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="number"
+                          placeholder="Units"
+                          value={stockUnits[stock._id] || ""}
+                          onChange={e =>
+                            setStockUnits(prev => ({
+                              ...prev,
+                              [stock._id]: e.target.value
+                            }))
+                          }
+                        />
+                        <button onClick={() => sendStockRequest(stock)}>
+                          Request
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="card">
+              <h2>Compatible Donors</h2>
+              {donors.map(donor => (
+                <div key={donor._id} className="row">
+                  <span>{donor.username}</span>
+                  <span>{donor.bloodGroup}</span>
+                  <button
+                    disabled={remaining === 0}
+                    onClick={() => sendDonorRequest(donor)}
+                  >
+                    Request
+                  </button>
                 </div>
-
-                <input
-                  type="number"
-                  placeholder="Units"
-                  value={stockUnits[stock._id] || ""}
-                  onChange={e =>
-                    setStockUnits(p => ({
-                      ...p,
-                      [stock._id]: e.target.value
-                    }))
-                  }
-                />
-
-                <button onClick={() => sendStockRequest(stock)}>
-                  Request
-                </button>
-              </div>
-            ))}
-
-            <h3>Available Donors</h3>
-            {donors.map(donor => (
-              <div key={donor._id} className="donor-item">
-                <div>
-                  {donor.name} • {donor.bloodGroup}
-                </div>
-                <button onClick={() => sendDonorRequest(donor)}>
-                  Request 1 Unit
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
 
-        {/* HISTORY */}
+        {/* ================= HISTORY ================= */}
         {view === "history" && (
           <div className="card">
             <h2>Request History</h2>
 
             {requests
+              .filter(r => r.requestType === "USER")
               .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .map(r => (
-                <div key={r._id} className="history-item">
+              .map(userReq => {
+                const childRequests = requests.filter(
+                  r => String(r.parentRequestId) === String(userReq._id)
+                );
 
-                  <div
-                    className="history-header"
-                    onClick={() =>
-                      setOpenHistory(openHistory === r._id ? null : r._id)
-                    }
-                  >
-                    <div>
-                      <strong>{r.bloodGroup}</strong> • {r.units} Units
+                return (
+                  <div key={userReq._id} className="history-block">
+
+                    <div className="history-main-row">
+                      <div>{userReq.bloodGroup}</div>
+                      <div>{userReq.units} units</div>
+                      <div className={`badge ${(userReq.status || "").toLowerCase()}`}>
+                        {userReq.status}
+                      </div>
+                      <div>
+                        <strong>Required:</strong>{" "}
+                        {userReq.neededDate
+                          ? new Date(userReq.reachDate).toLocaleDateString()
+                          : "-"}
+                      </div>
+
+                      <div>
+                        {new Date(userReq.createdAt).toLocaleDateString()}
+                      </div>
+                      <button
+                        onClick={() =>
+                          setOpenHistory(
+                            openHistory === userReq._id ? null : userReq._id
+                          )
+                        }
+                      >
+                        {openHistory === userReq._id
+                          ? "Hide Details"
+                          : "View Details"}
+                      </button>
                     </div>
 
-                    <div className={`status ${r.status}`}>
-                      {r.status}
-                    </div>
+                    {openHistory === userReq._id && (
+                      <div className="history-details">
+                        {childRequests.map(child => (
+                          <div key={child._id} className="detail-row">
+                            <div>{child.requestType}</div>
+                            <div>{child.units} units</div>
+                            <div className={`badge ${(child.status || "").toLowerCase()}`}>
+                              {child.status}
+                            </div>
+                          
+                            {child.status === "Pending" && (
+                              <button
+                                className="cancel-btn"
+                                onClick={() => cancelRequest(child._id)}
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                   </div>
-
-                  {openHistory === r._id && (
-                    <div className="history-details">
-                      <p><b>Type:</b> {r.requestType}</p>
-                      <p><b>Blood Group:</b> {r.bloodGroup}</p>
-                      <p><b>Units:</b> {r.units}</p>
-                      <p><b>Status:</b> {r.status}</p>
-                      <p><b>Date:</b> {new Date(r.createdAt).toLocaleString()}</p>
-
-                      {r.status === "Pending" && (
-                        <button
-                          className="cancel-btn"
-                          onClick={() => cancelRequest(r._id)}
-                        >
-                          Cancel Request
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
           </div>
         )}
 

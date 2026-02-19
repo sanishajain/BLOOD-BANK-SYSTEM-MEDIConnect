@@ -68,14 +68,15 @@ const userSchema = new mongoose.Schema(
     },
 
     // ================= CONTROL =================
-    cancelCount: {
-      type: Number,
-      default: 0,
-    },
-    bannedUntil: {
-      type: Date,
-      default: null,
-    },
+   cancelCount: {
+  type: Number,
+  default: 0
+},
+bannedUntil: {
+  type: Date,
+  default: null
+}
+
   },
   { timestamps: true }
 );
