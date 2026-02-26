@@ -8,9 +8,10 @@ export default function DonorDashboard() {
   const token = localStorage.getItem("token");
 
   const [view, setView] = useState("assigned");
-
   const [assigned, setAssigned] = useState([]);
   const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [profile, setProfile] = useState({
     username: "",
     bloodGroup: "",
@@ -23,44 +24,42 @@ export default function DonorDashboard() {
   const [editMode, setEditMode] = useState(false);
   const [popup, setPopup] = useState({ show: false, msg: "" });
 
+  /* ---------------- AUTH CHECK ---------------- */
   useEffect(() => {
     if (!token) nav("/login/donor");
   }, [token, nav]);
 
-  /* ---------- LOADERS ---------- */
+  /* ---------------- LOADERS ---------------- */
 
   const loadAssigned = async () => {
     try {
+      setLoading(true);
       const res = await api("/api/donors/assigned", "GET", null, token);
       setAssigned(Array.isArray(res) ? res : []);
     } catch {
       setAssigned([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadHistory = async () => {
     try {
+      setLoading(true);
       const res = await api("/api/donors/history", "GET", null, token);
       setHistory(Array.isArray(res) ? res : []);
     } catch {
       setHistory([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   const loadProfile = async () => {
     try {
       const res = await api("/api/donors/profile", "GET", null, token);
-      if (res) {
-        setProfile({
-          username: res.username || "",
-          bloodGroup: res.bloodGroup || "",
-          mobileNumber: res.mobileNumber || "",
-          city: res.city || "",
-          lastDonationDate: res.lastDonationDate || null,
-          nextDonationDate: res.nextDonationDate || null,
-        });
-      }
-    } catch { }
+      if (res) setProfile(res);
+    } catch {}
   };
 
   useEffect(() => {
@@ -75,14 +74,13 @@ export default function DonorDashboard() {
     if (view === "profile") loadProfile();
   }, [view]);
 
-  /* ---------- ACTIONS ---------- */
+  /* ---------------- ACTIONS ---------------- */
 
   const accept = async (id) => {
     const res = await api(`/api/donors/accept/${id}`, "POST", null, token);
     if (res?.message) {
       setPopup({ show: true, msg: res.message });
-      setView("assigned");  // ✅ auto switch to assigned
-      loadAssigned();       // ✅ refresh list
+      loadAssigned();
       loadProfile();
     }
   };
@@ -91,8 +89,7 @@ export default function DonorDashboard() {
     const res = await api(`/api/donors/reject/${id}`, "POST", null, token);
     if (res?.message) {
       setPopup({ show: true, msg: res.message });
-      setView("assigned");  // ✅ auto switch to assigned
-      loadAssigned();       // ✅ refresh list
+      loadAssigned();
       loadProfile();
     }
   };
@@ -121,22 +118,22 @@ export default function DonorDashboard() {
     nav("/");
   };
 
-  /* ---------- ELIGIBILITY ---------- */
+  /* ---------------- ELIGIBILITY ---------------- */
 
   const today = new Date();
-  const nextEligibleDate = profile.nextDonationDate
+  const nextEligibleDate = profile?.nextDonationDate
     ? new Date(profile.nextDonationDate)
     : null;
 
   const isEligible =
     !nextEligibleDate || nextEligibleDate <= today;
 
-  /* ---------- UI ---------- */
+  /* ---------------- UI ---------------- */
 
   return (
     <div className="donor-layout">
       <div className="sidebar">
-        <h2>Donor</h2>
+        <h2>{profile.username || "Donor"}</h2>
         <button onClick={() => setView("assigned")}>Assigned Requests</button>
         <button onClick={() => setView("history")}>Donation History</button>
         <button onClick={() => setView("profile")}>Profile</button>
@@ -145,19 +142,33 @@ export default function DonorDashboard() {
 
       <div className="main-content">
 
+        {/* LOADING */}
+        {loading && <p className="hint">Loading...</p>}
+
         {/* ASSIGNED */}
-        {view === "assigned" && (
+        {!loading && view === "assigned" && (
           <>
             <h2>Assigned Requests</h2>
-            <div className="card">
-              {assigned.length === 0 && <p className="hint">No assigned requests.</p>}
-              {assigned.map(r => (
+
+            {assigned.length === 0 ? (
+              <p className="hint">
+                You currently have no assigned requests.
+                <br />
+                When a user selects you, it will appear here.
+              </p>
+            ) : (
+              assigned.map(r => (
                 <div key={r._id} className="row">
-                  <span>{r.hospital || "Hospital"}</span>
-                  <span>{r.bloodGroup}</span>
-                  <span>{r.units} units</span>
-                  <span>Needed on: {new Date(r.neededDate).toLocaleDateString()}</span>
-                  <span>city: {r.city}</span>
+                  <span><b>Hospital:</b> {r.hospital || "N/A"}</span>
+                  <span><b>Blood:</b> {r.bloodGroup}</span>
+                  <span><b>Units:</b> {r.units}</span>
+                  <span>
+                    <b>Needed On:</b>{" "}
+                    {r.requiredDate
+                      ? new Date(r.requiredDate).toLocaleDateString()
+                      : "—"}
+                  </span>
+                  <span><b>City:</b> {r.city}</span>
 
                   {r.status === "Pending" && (
                     <>
@@ -170,88 +181,62 @@ export default function DonorDashboard() {
                     <span className="status accepted">Accepted</span>
                   )}
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </>
         )}
 
         {/* HISTORY */}
-        {view === "history" && (
+        {!loading && view === "history" && (
           <>
             <h2>Donation History</h2>
-            <div className="card">
-              {history.length === 0 && <p className="hint">No donation history yet.</p>}
-              {history.map(h => (
+
+            {history.length === 0 ? (
+              <p className="hint">
+                No donation history yet.
+                <br />
+                Once you complete a donation, it will appear here.
+              </p>
+            ) : (
+              history.map(h => (
                 <div key={h._id} className="history-row">
-                  <div className="history-section">
-                    <b>Hospital</b>
-                    <span>{h.hospital || "N/A"}</span>
-                  </div>
-                  <div className="history-section">
-                    <b>Blood Group</b>
-                    <span>{h.bloodGroup}</span>
-                  </div>
-                  <div className="history-section">
-                    <b>Units</b>
-                    <span>{h.units}</span>
-                  </div>
-                  <div className="history-section">
-                    <b>Status</b>
-                    <span className={`status ${h.status?.toLowerCase()}`}>
-                      {h.status}
-                    </span>
-                  </div>
-                  <div className="history-section">
-                    <b>Requested By</b>
-                    <span>{h.requestedBy?.name || "N/A"}</span>
-                    <small>{h.requestedBy?.phone || ""}</small>
-                  </div>
-                  <div className="history-section">
-                    <b>Needed Date</b>
-                    <span>
-                      {h.neededDate
-                        ? new Date(h.neededDate).toLocaleDateString()
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="history-section">
-                    <b>Donation Date</b>
-                    <span>
-                      {h.reachDate
-                        ? new Date(h.reachDate).toLocaleDateString()
-                        : "—"}
-                    </span>
-                  </div>
+                  <span>{h.hospital}</span>
+                  <span>{h.bloodGroup}</span>
+                  <span>{h.units} units</span>
+                  <span>{h.status}</span>
                 </div>
-              ))}
-            </div>
+              ))
+            )}
           </>
         )}
 
         {/* PROFILE */}
-        {view === "profile" && (
+        {!loading && view === "profile" && (
           <>
             <h2>My Profile</h2>
+
             <div className="profile-card">
+
+              {/* Eligibility Badge */}
+              <div style={{ marginBottom: "15px" }}>
+                <strong>Status: </strong>
+                {isEligible ? (
+                  <span style={{ color: "green", fontWeight: "bold" }}>
+                    Eligible to Donate
+                  </span>
+                ) : (
+                  <span style={{ color: "red", fontWeight: "bold" }}>
+                    Not Eligible Until {nextEligibleDate.toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
               <p>
                 <b>Last Donation:</b>{" "}
                 {profile.lastDonationDate
                   ? new Date(profile.lastDonationDate).toLocaleDateString()
                   : "Not donated yet"}
               </p>
-
-              <p>
-                <b>Next Eligible Date:</b>{" "}
-                {nextEligibleDate
-                  ? nextEligibleDate.toLocaleDateString()
-                  : "Eligible now"}
-              </p>
-
-              {!isEligible && (
-                <p style={{ color: "red" }}>
-                  Not eligible until {nextEligibleDate.toLocaleDateString()}
-                </p>
-              )}
 
               {!editMode ? (
                 <>

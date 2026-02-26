@@ -6,9 +6,12 @@ const Donor = require("../models/Donor");
 const ADMIN_USERNAME = "admin";
 const ADMIN_PASSWORD = "admin123";
 
-const makeToken = (id, role) =>
-  jwt.sign({ id, role }, process.env.JWT_SECRET, { expiresIn: "7d" });
-
+const makeToken = (id, role, username) =>
+  jwt.sign(
+    { id, role, username },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
 /* ================= USER REGISTER ================= */
 const userRegister = async (req, res) => {
   try {
@@ -40,7 +43,7 @@ const userRegister = async (req, res) => {
 
     res.json({
       message: "User registered",
-      token: makeToken(user._id, "USER"),
+      token: makeToken(user._id, "USER", user.username),
     });
 
   } catch (err) {
@@ -140,8 +143,7 @@ const donorRegister = async (req, res) => {
 
     res.json({
       message: "Donor registered successfully",
-      token: makeToken(donor._id, "DONOR"),
-    });
+token: makeToken(donor._id, "DONOR", donor.username),    });
 
   } catch (err) {
     console.error(err);
@@ -200,8 +202,9 @@ const login = async (req, res) => {
     const ok = await bcrypt.compare(password, user.password);
     if (!ok) return res.status(400).json({ message: "Wrong password" });
 
-    res.json({ token: makeToken(user._id, role) });
-
+res.json({
+  token: makeToken(user._id, role, user.username)
+});
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Login failed" });

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { api } from "../api";
 import { useNavigate } from "react-router-dom";
 import "../css/user.css";
-
+import { jwtDecode } from "jwt-decode";
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
 
 export default function UserDashboard() {
@@ -13,6 +13,8 @@ export default function UserDashboard() {
   const [loading, setLoading] = useState(false);
   const [infoMsg, setInfoMsg] = useState("");
   const [openHistory, setOpenHistory] = useState(null);
+  const [processingId, setProcessingId] = useState(null);
+  const [receiverName, setReceiverName] = useState("");
 
   const [form, setForm] = useState({
     city: "",
@@ -29,25 +31,62 @@ export default function UserDashboard() {
   const [requests, setRequests] = useState([]);
   const [stockUnits, setStockUnits] = useState({});
 
+  /* ================= TOKEN CHECK ================= */
+
+  useEffect(() => {
+  if (!token) {
+    nav("/");
+  } else {
+    try {
+      const decoded = jwtDecode(token);
+      console.log("DECODED TOKEN:", decoded);
+      setReceiverName(decoded.username || decoded.name || decoded.user?.username || "");
+    } catch (err) {
+      console.error("Invalid token");
+    }
+  }
+}, [token, nav]);
+  /* ================= AUTO CLEAR MESSAGE ================= */
+
+  useEffect(() => {
+    if (!infoMsg) return;
+    const t = setTimeout(() => setInfoMsg(""), 3000);
+    return () => clearTimeout(t);
+  }, [infoMsg]);
+
   /* ================= LOAD DATA ================= */
 
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     try {
-      const s = await api("/api/receivers/compatible-stock", "GET", null, token);
-      const d = await api("/api/receivers/compatible-donors", "GET", null, token);
-      const h = await api("/api/receivers/history", "GET", null, token);
+      setLoading(true);
 
-      setStocks(Array.isArray(s) ? s : []);
-      setDonors(Array.isArray(d) ? d : []);
-      setRequests(Array.isArray(h) ? h : []);
-    } catch (e) {
-      console.log("Load error:", e);
+      const historyRes = await api("/api/receivers/history", "GET", null, token);
+      const historyData = Array.isArray(historyRes?.requests)
+        ? historyRes.requests
+        : Array.isArray(historyRes)
+          ? historyRes
+          : [];
+
+      setRequests(historyData);
+
+      if (view === "stock") {
+        const stockRes = await api("/api/receivers/compatible-stock", "GET", null, token);
+        const donorRes = await api("/api/receivers/compatible-donors", "GET", null, token);
+
+        setStocks(stockRes?.stocks || stockRes || []);
+        setDonors(donorRes?.donors || donorRes || []);
+      }
+    } catch (err) {
+      console.error(err);
+      setInfoMsg("Failed to load data");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [token, view]);
 
   useEffect(() => {
     if (token) loadAll();
-  }, [view]);
+  }, [token, view, loadAll]);
 
   /* ================= MAIN REQUEST ================= */
 
@@ -71,8 +110,31 @@ export default function UserDashboard() {
   );
 
   const remaining = mainReq
-    ? Math.max(Number(mainReq.units) - requestedTotal, 0)
+    ? Math.max(Number(mainReq.units || 0) - requestedTotal, 0)
     : 0;
+
+  /* ================= SAME CITY PRIORITY ================= */
+
+  const sortedDonors = useMemo(() => {
+    if (!mainReq) return donors;
+
+    const sameCity = [];
+    const otherCity = [];
+
+    donors.forEach(d => {
+      if (
+        d.city &&
+        mainReq.city &&
+        d.city.toLowerCase() === mainReq.city.toLowerCase()
+      ) {
+        sameCity.push(d);
+      } else {
+        otherCity.push(d);
+      }
+    });
+
+    return [...sameCity, ...otherCity];
+  }, [donors, mainReq]);
 
   /* ================= CREATE REQUEST ================= */
 
@@ -82,17 +144,15 @@ export default function UserDashboard() {
     if (!bloodGroup || !units || !hospital || !requiredDate || !patientName || !contact || !city)
       return alert("Please fill all fields");
 
-    if (loading) return;
-    setLoading(true);
+    if (Number(units) <= 0) return alert("Units must be greater than 0");
 
     try {
+      setLoading(true);
+
       await api(
         "/api/receivers/request-blood",
         "POST",
-        {
-          ...form,
-          units: Number(units)
-        },
+        { ...form, units: Number(units) },
         token
       );
 
@@ -109,11 +169,12 @@ export default function UserDashboard() {
       setView("stock");
       setInfoMsg("Requirement created successfully");
       loadAll();
-    } catch {
+    } catch (err) {
+      console.error(err);
       alert("Error creating request");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   /* ================= STOCK REQUEST ================= */
@@ -124,42 +185,65 @@ export default function UserDashboard() {
     if (!units || units <= 0) return alert("Enter valid units");
     if (units > remaining) return alert(`Only ${remaining} units remaining`);
 
-    await api(
-      "/api/receivers/request-from-stock",
-      "POST",
-      { stockId: stock._id, units },
-      token
-    );
+    try {
+      setProcessingId(stock._id);
 
-    setStockUnits(p => ({ ...p, [stock._id]: "" }));
-    setInfoMsg("Request sent to admin");
-    loadAll();
+      await api(
+        "/api/receivers/request-from-stock",
+        "POST",
+        { stockId: stock._id, units },
+        token
+      );
+
+      setStockUnits(prev => ({ ...prev, [stock._id]: "" }));
+      setInfoMsg("Request sent to admin");
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      alert("Stock request failed");
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   /* ================= DONOR REQUEST ================= */
 
   const sendDonorRequest = async donor => {
-    if (remaining === 0) return;
+    if (remaining <= 0) return;
 
-    await api(
-      "/api/receivers/request-from-donor",
-      "POST",
-      { donorId: donor._id },
-      token
-    );
+    try {
+      setProcessingId(donor._id);
 
-    setInfoMsg("Request sent to donor");
-    loadAll();
+      await api(
+        "/api/receivers/request-from-donor",
+        "POST",
+        { donorId: donor._id },
+        token
+      );
+
+      setInfoMsg("Request sent to donor");
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      alert("Donor request failed");
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   /* ================= CANCEL ================= */
 
   const cancelRequest = async id => {
-    const ok = window.confirm("Cancel this request?");
-    if (!ok) return;
+    if (!window.confirm("Cancel this request?")) return;
 
-    await api(`/api/receivers/cancel/${id}`, "DELETE", null, token);
-    loadAll();
+    try {
+      await api(`/api/receivers/cancel/${id}`, "DELETE", null, token);
+      setInfoMsg("Request cancelled");
+      loadAll();
+    } catch (err) {
+      console.error(err);
+      alert("Cancel failed");
+    }
   };
 
   const logout = () => {
@@ -172,184 +256,140 @@ export default function UserDashboard() {
   return (
     <div className="user-layout">
       <div className="sidebar">
-        <h2>User</h2>
+        <h2>{receiverName ? `${receiverName}` : "Dashboard"}</h2>
         <button onClick={() => setView("create")}>Create Requirement</button>
         <button onClick={() => setView("stock")} disabled={!mainReq}>
           Stock & Donors
         </button>
         <button onClick={() => setView("history")}>History</button>
-        <button className="logout" onClick={logout}>
-          Logout
-        </button>
+        <button className="logout" onClick={logout}>Logout</button>
       </div>
 
       <div className="main-content">
-        {infoMsg && <p className="info">{infoMsg}</p>}
+        {loading && <p className="info">Loading...</p>}
+        {infoMsg && <p className="info success">{infoMsg}</p>}
 
-        {/* ================= CREATE ================= */}
+        {/* CREATE VIEW */}
         {view === "create" && (
           <div className="card">
             <h2>Create Blood Requirement</h2>
-
-            <input
-              placeholder="Patient Name"
+            <input placeholder="Patient Name"
               value={form.patientName}
-              onChange={e =>
-                setForm({ ...form, patientName: e.target.value })
-              }
+              onChange={e => setForm({ ...form, patientName: e.target.value })}
             />
-
-            <input
-              placeholder="Contact"
+            <input placeholder="Contact"
               value={form.contact}
               onChange={e => setForm({ ...form, contact: e.target.value })}
             />
-
-            <select
-              value={form.bloodGroup}
-              onChange={e =>
-                setForm({ ...form, bloodGroup: e.target.value })
-              }
+            <select value={form.bloodGroup}
+              onChange={e => setForm({ ...form, bloodGroup: e.target.value })}
             >
               <option value="">Blood Group</option>
               {BLOOD_GROUPS.map(b => (
-                <option key={b}>{b}</option>
+                <option key={b} value={b}>{b}</option>
               ))}
             </select>
-
-            <input
-              type="number"
-              placeholder="Units"
+            <input type="number" min="1" placeholder="Units"
               value={form.units}
               onChange={e => setForm({ ...form, units: e.target.value })}
             />
-
-            <input
-              type="date"
+            <input type="date"
               value={form.requiredDate}
-              onChange={e =>
-                setForm({ ...form, requiredDate: e.target.value })
-              }
+              onChange={e => setForm({ ...form, requiredDate: e.target.value })}
             />
-
-            <input
-              placeholder="Hospital"
+            <input placeholder="Hospital"
               value={form.hospital}
               onChange={e => setForm({ ...form, hospital: e.target.value })}
             />
-
-            <input
-              placeholder="City"
+            <input placeholder="City"
               value={form.city}
               onChange={e => setForm({ ...form, city: e.target.value })}
             />
-
             <button disabled={loading} onClick={sendRequest}>
               {loading ? "Saving..." : "Save Requirement"}
             </button>
           </div>
         )}
 
-        {/* ================= STOCK & DONORS ================= */}
+        {/* STOCK & DONOR VIEW */}
         {view === "stock" && mainReq && (
-          <>
-            <div className="card highlight">
-              <p><strong>Blood:</strong> {mainReq.bloodGroup}</p>
-              <p><strong>Total Needed:</strong> {mainReq.units}</p>
-              <p><strong>Requested:</strong> {requestedTotal}</p>
-              <p><strong>Remaining:</strong> {remaining}</p>
-            </div>
+          <div className="card">
+            <h2>Stock & Donors</h2>
 
-            <div className="card">
-              <h2>Compatible Stock</h2>
+            <p>
+              <strong>Blood Group Needed:</strong> {mainReq.bloodGroup} <br />
+              <strong>Required:</strong> {mainReq.units} |{" "}
+              <strong>Requested:</strong> {requestedTotal} |{" "}
+              <strong>Remaining:</strong> {remaining}
+            </p>
 
-              {stocks.map(stock => {
-                const related = requests.filter(
-                  r =>
-                    String(r.stockId) === String(stock._id) &&
-                    ["Pending", "Accepted"].includes(r.status)
-                );
+            <h3>Available Stock</h3>
+            {stocks.length === 0 && <p>No stock available</p>}
 
-                const totalFromStock = related.reduce(
-                  (sum, r) => sum + Number(r.units || 0),
-                  0
-                );
+            {stocks.map(stock => (
+              <div key={stock._id} className="stock-row">
+                <span>{stock.bloodGroup}</span>
+                <span>{stock.units} units</span>
+                <input type="number" min="1"
+                  placeholder="Units"
+                  value={stockUnits[stock._id] || ""}
+                  onChange={e =>
+                    setStockUnits(prev => ({
+                      ...prev,
+                      [stock._id]: e.target.value
+                    }))
+                  }
+                />
+                <button
+                  disabled={remaining <= 0 || processingId === stock._id}
+                  onClick={() => sendStockRequest(stock)}
+                >
+                  {processingId === stock._id ? "Sending..." : "Request"}
+                </button>
+              </div>
+            ))}
 
-                const pendingReq = related.find(r => r.status === "Pending");
+            <h3>Available Donors</h3>
+            {sortedDonors.length === 0 && <p>No donors available</p>}
 
-                return (
-                  <div key={stock._id} className="row">
-                    <span>{stock.bloodGroup}</span>
-                    <span>{stock.units} units available</span>
+            {sortedDonors.map(donor => {
+              const isSameCity =
+                donor.city &&
+                mainReq.city &&
+                donor.city.toLowerCase() === mainReq.city.toLowerCase();
 
-                    {related.length > 0 ? (
-                      <div className="stock-status">
-                        <span>Requested: {totalFromStock} units</span>
-
-                        {pendingReq ? (
-                          <>
-                            <span>Status: Pending</span>
-                            <button
-                              className="cancel-btn"
-                              onClick={() => cancelRequest(pendingReq._id)}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <span className="accepted">Status: Accepted</span>
-                        )}
-                      </div>
-                    ) : (
-                      <>
-                        <input
-                          type="number"
-                          placeholder="Units"
-                          value={stockUnits[stock._id] || ""}
-                          onChange={e =>
-                            setStockUnits(prev => ({
-                              ...prev,
-                              [stock._id]: e.target.value
-                            }))
-                          }
-                        />
-                        <button onClick={() => sendStockRequest(stock)}>
-                          Request
-                        </button>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="card">
-              <h2>Compatible Donors</h2>
-              {donors.map(donor => (
-                <div key={donor._id} className="row">
+              return (
+                <div
+                  key={donor._id}
+                  className={`donor-row ${isSameCity ? "highlight" : ""}`}
+                >
                   <span>{donor.username}</span>
                   <span>{donor.bloodGroup}</span>
+                  <span>{donor.city}</span>
+
                   <button
-                    disabled={remaining === 0}
+                    disabled={remaining <= 0 || processingId === donor._id}
                     onClick={() => sendDonorRequest(donor)}
                   >
-                    Request
+                    {processingId === donor._id ? "Sending..." : "Request Donor"}
                   </button>
                 </div>
-              ))}
-            </div>
-          </>
+              );
+            })}
+          </div>
         )}
 
-        {/* ================= HISTORY ================= */}
+        {/* HISTORY VIEW */}
+        {/* ===================== HISTORY VIEW ===================== */}
         {view === "history" && (
           <div className="card">
-            <h2>Request History</h2>
+            <h2 className="history-title">Request History</h2>
 
             {requests
               .filter(r => r.requestType === "USER")
               .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
               .map(userReq => {
+
                 const childRequests = requests.filter(
                   r => String(r.parentRequestId) === String(userReq._id)
                 );
@@ -357,23 +397,37 @@ export default function UserDashboard() {
                 return (
                   <div key={userReq._id} className="history-block">
 
+                    {/* MAIN ROW */}
                     <div className="history-main-row">
-                      <div>{userReq.bloodGroup}</div>
-                      <div>{userReq.units} units</div>
-                      <div className={`badge ${(userReq.status || "").toLowerCase()}`}>
-                        {userReq.status}
-                      </div>
-                      <div>
-                        <strong>Required:</strong>{" "}
-                        {userReq.neededDate
-                          ? new Date(userReq.reachDate).toLocaleDateString()
-                          : "-"}
+
+                      <div className="history-col">
+                        <span>Blood</span>
+                        <p>{userReq.bloodGroup}</p>
                       </div>
 
-                      <div>
-                        {new Date(userReq.createdAt).toLocaleDateString()}
+                      <div className="history-col">
+                        <span>Units</span>
+                        <p>{userReq.units}</p>
                       </div>
+
+                      <div className="history-col">
+                        <span>Status</span>
+                        <div className={`badge ${(userReq.status || "").toLowerCase()}`}>
+                          {userReq.status}
+                        </div>
+                      </div>
+
+                      <div className="history-col">
+                        <span>Date</span>
+                        <p>
+                          {userReq.requiredDate
+                            ? new Date(userReq.requiredDate).toLocaleDateString()
+                            : "-"}
+                        </p>
+                      </div>
+
                       <button
+                        className="details-btn"
                         onClick={() =>
                           setOpenHistory(
                             openHistory === userReq._id ? null : userReq._id
@@ -384,18 +438,31 @@ export default function UserDashboard() {
                           ? "Hide Details"
                           : "View Details"}
                       </button>
+
                     </div>
 
+                    {/* CHILD REQUESTS */}
                     {openHistory === userReq._id && (
                       <div className="history-details">
+
+                        {childRequests.length === 0 && (
+                          <div className="no-child">No responses yet.</div>
+                        )}
+
                         {childRequests.map(child => (
                           <div key={child._id} className="detail-row">
-                            <div>{child.requestType}</div>
-                            <div>{child.units} units</div>
+
+                            <div className="detail-type">
+                              {child.requestType}
+                            </div>
+
+                            <div>{child.units} Unit</div>
+
                             <div className={`badge ${(child.status || "").toLowerCase()}`}>
                               {child.status}
                             </div>
-                          
+
+                            {/* CANCEL BUTTON */}
                             {child.status === "Pending" && (
                               <button
                                 className="cancel-btn"
@@ -404,8 +471,35 @@ export default function UserDashboard() {
                                 Cancel
                               </button>
                             )}
+
+                            {/* ================= ACCEPTED CONTACT ================= */}
+                            {child.status === "Accepted" && child.donorId && (
+                              <div className="accepted-contact-card">
+                                <div className="accepted-contact-info">
+                                  <span>Donor Name: {child.donorId.username || "Not Available"}</span>
+                                  <span>Blood Group: {child.donorId.bloodGroup}</span>
+                                  {/* <span>City: {child.donorId.city || "Not Provided"}</span> */}
+                                  <span>Mobile: {child.donorId.mobileNumber}</span>
+                                </div>
+
+                                <div className="accepted-contact-actions">
+                                  <a href={`tel:${child.donorId.mobileNumber}`}>
+                                    <button className="call-btn">Call</button>
+                                  </a>
+
+                                  <a
+                                    href={`https://wa.me/91${child.donorId.mobileNumber}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <button className="whatsapp-btn">WhatsApp</button>
+                                  </a>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
+
                       </div>
                     )}
 
@@ -414,7 +508,6 @@ export default function UserDashboard() {
               })}
           </div>
         )}
-
       </div>
     </div>
   );

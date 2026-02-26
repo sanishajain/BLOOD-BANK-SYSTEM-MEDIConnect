@@ -16,27 +16,24 @@ const getCompatibleGroups = (recipientGroup) => {
     "AB-": ["O-", "A-", "B-", "AB-"],
     "AB+": ["O-", "O+", "A-", "A+", "B-", "B+", "AB-", "AB+"]
   };
-
   return compatibility[recipientGroup] || [];
 };
 
-
-/* ================= CREATE MAIN USER REQUEST ================= */
+/* ================= CREATE USER REQUEST ================= */
 
 const createRequest = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    if (!user)
-      return res.status(404).json({ message: "User not found" });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     if (user.bannedUntil && user.bannedUntil > new Date()) {
       return res.status(403).json({
-        message: "You are banned until " + user.bannedUntil.toDateString()
+        message: `You are banned until ${user.bannedUntil.toDateString()}`
       });
     }
 
     const request = await Request.create({
-      userId: req.user.id,
+      userId: user._id,
       bloodGroup: req.body.bloodGroup,
       units: Number(req.body.units),
       hospital: req.body.hospital,
@@ -48,12 +45,11 @@ const createRequest = async (req, res) => {
       status: "WaitingForMatch"
     });
 
-    res.json(request);
+    return res.status(201).json(request);
   } catch (err) {
-    res.status(500).json({ message: "Error creating request" });
+    return res.status(500).json({ message: "Error creating request" });
   }
 };
-
 
 /* ================= HISTORY ================= */
 
@@ -63,12 +59,11 @@ const myRequests = async (req, res) => {
       .populate("donorId", "username mobileNumber")
       .sort({ createdAt: -1 });
 
-    res.json(requests);
+    return res.json(requests);
   } catch {
-    res.status(500).json({ message: "Failed to load history" });
+    return res.status(500).json({ message: "Failed to load history" });
   }
 };
-
 
 /* ================= COMPATIBLE DONORS ================= */
 
@@ -77,42 +72,46 @@ const getCompatibleDonors = async (req, res) => {
     const mainReq = await Request.findOne({
       userId: req.user.id,
       requestType: "USER",
-      status: { $ne: "Closed" }
+      status: { $in: ["WaitingForMatch", "Matched"] }
     }).sort({ createdAt: -1 });
 
     if (!mainReq) return res.json([]);
 
     const compatibleGroups = getCompatibleGroups(mainReq.bloodGroup);
-    const now = new Date();
+    const requestCity = mainReq.city.trim().toLowerCase();
 
     const donors = await Donor.find({
-      bloodGroup: { $in: compatibleGroups },
-      city: mainReq.city,
-      $or: [
-        { nextEligibleDate: { $lte: now } },
-        { nextEligibleDate: null }
-      ]
+      bloodGroup: { $in: compatibleGroups }
     });
 
-    const busy = await Request.find({
-      requestType: "DONOR",
-      status: { $in: ["Pending", "Accepted"] }
+    const today = new Date();
+
+    const eligible = donors.filter(d => {
+      if (!d.lastDonationDate) return true;
+
+      const diffDays =
+        (today - new Date(d.lastDonationDate)) / (1000 * 60 * 60 * 24);
+
+      return diffDays >= 56;
     });
 
-    const busyIds = busy.map(r => String(r.donorId));
+    // 🔥 SORT: same city first
+    eligible.sort((a, b) => {
+      const aSame = a.city?.trim().toLowerCase() === requestCity;
+      const bSame = b.city?.trim().toLowerCase() === requestCity;
 
-    const filtered = donors.filter(
-      d => !busyIds.includes(String(d._id))
-    );
+      if (aSame && !bSame) return -1;
+      if (!aSame && bSame) return 1;
+      return 0;
+    });
 
-    res.json(filtered);
+    return res.json(eligible);
 
-  } catch {
-    res.status(500).json({ message: "Failed to load donors" });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Server error" });
   }
 };
-
-
 /* ================= COMPATIBLE STOCK ================= */
 
 const getCompatibleStock = async (req, res) => {
@@ -120,7 +119,7 @@ const getCompatibleStock = async (req, res) => {
     const mainReq = await Request.findOne({
       userId: req.user.id,
       requestType: "USER",
-      status: { $ne: "Closed" }
+      status: { $in: ["WaitingForMatch", "Matched"] }
     }).sort({ createdAt: -1 });
 
     if (!mainReq) return res.json([]);
@@ -132,24 +131,24 @@ const getCompatibleStock = async (req, res) => {
       units: { $gt: 0 }
     });
 
-    res.json(stock);
-
+    return res.json(stock);
   } catch {
-    res.status(500).json({ message: "Failed to load stock" });
+    return res.status(500).json({ message: "Failed to load stock" });
   }
 };
-
 
 /* ================= REQUEST FROM STOCK ================= */
 
 const quickRequestFromStock = async (req, res) => {
   try {
     const { stockId, units } = req.body;
+    if (!units || units <= 0)
+      return res.status(400).json({ message: "Invalid units" });
 
     const main = await Request.findOne({
       userId: req.user.id,
       requestType: "USER",
-      status: { $ne: "Closed" }
+      status: { $in: ["WaitingForMatch", "Matched"] }
     }).sort({ createdAt: -1 });
 
     if (!main)
@@ -159,8 +158,8 @@ const quickRequestFromStock = async (req, res) => {
     if (!stock)
       return res.status(404).json({ message: "Stock not found" });
 
-    if (units <= 0 || units > stock.units)
-      return res.status(400).json({ message: "Invalid stock units" });
+    if (units > stock.units)
+      return res.status(400).json({ message: "Not enough stock units" });
 
     stock.units -= units;
     await stock.save();
@@ -180,12 +179,14 @@ const quickRequestFromStock = async (req, res) => {
       city: main.city
     });
 
-    res.json(child);
+    main.status = "Matched";
+    await main.save();
+
+    return res.json(child);
   } catch {
-    res.status(500).json({ message: "Stock request failed" });
+    return res.status(500).json({ message: "Stock request failed" });
   }
 };
-
 
 /* ================= REQUEST FROM DONOR ================= */
 
@@ -196,18 +197,26 @@ const quickRequestFromDonor = async (req, res) => {
     const main = await Request.findOne({
       userId: req.user.id,
       requestType: "USER",
-      status: { $ne: "Closed" }
+      status: { $in: ["WaitingForMatch", "Matched"] }
     }).sort({ createdAt: -1 });
 
     if (!main)
       return res.status(400).json({ message: "Create requirement first" });
 
-    const existing = await Request.findOne({
+    const donor = await Donor.findById(donorId);
+    if (!donor)
+      return res.status(404).json({ message: "Donor not found" });
+
+    if (donor.nextDonationDate && donor.nextDonationDate > new Date())
+      return res.status(400).json({ message: "Donor not eligible yet" });
+
+    const busy = await Request.findOne({
       donorId,
+      requestType: "DONOR",
       status: { $in: ["Pending", "Accepted"] }
     });
 
-    if (existing)
+    if (busy)
       return res.status(400).json({ message: "Donor already assigned" });
 
     const child = await Request.create({
@@ -225,13 +234,14 @@ const quickRequestFromDonor = async (req, res) => {
       city: main.city
     });
 
-    res.json(child);
+    main.status = "Matched";
+    await main.save();
 
+    return res.json(child);
   } catch {
-    res.status(500).json({ message: "Donor request failed" });
+    return res.status(500).json({ message: "Donor request failed" });
   }
 };
-
 
 /* ================= DONOR ACCEPT ================= */
 
@@ -241,35 +251,26 @@ const donorAcceptRequest = async (req, res) => {
       _id: req.params.requestId,
       donorId: req.user.id,
       status: "Pending"
-    }).populate("userId", "username contact");
+    });
 
     if (!request)
       return res.status(404).json({ message: "Request not found" });
 
     const donor = await Donor.findById(req.user.id);
+    if (!donor)
+      return res.status(404).json({ message: "Donor not found" });
 
     const today = new Date();
-    const nextEligible = new Date(today);
-    nextEligible.setDate(nextEligible.getDate() + 56);
+    const nextDonation = new Date(today);
+    nextDonation.setDate(today.getDate() + 56);
 
     donor.lastDonationDate = today;
-    donor.nextEligibleDate = nextEligible;
+    donor.nextDonationDate = nextDonation;
     await donor.save();
 
     request.status = "Accepted";
     request.deliveryStatus = "Transiting";
     request.reachDate = request.requiredDate;
-
-    request.donorContact = {
-      name: donor.username,
-      phone: donor.mobileNumber
-    };
-
-    request.userContact = {
-      name: request.userId.username,
-      phone: request.userId.contact
-    };
-
     await request.save();
 
     await Request.findByIdAndUpdate(
@@ -277,57 +278,21 @@ const donorAcceptRequest = async (req, res) => {
       { status: "Matched" }
     );
 
-    res.json({ message: "Accepted" });
+    return res.json({ message: "Accepted successfully" });
 
   } catch {
-    res.status(500).json({ message: "Accept failed" });
+    return res.status(500).json({ message: "Accept failed" });
   }
 };
-
-
-/* ================= AUTO ARRIVAL ================= */
-
-const updateArrivalStatus = async () => {
-  const now = new Date();
-
-  const arrived = await Request.find({
-    reachDate: { $lte: now },
-    deliveryStatus: "Transiting",
-    status: "Accepted"
-  });
-
-  for (let req of arrived) {
-    req.deliveryStatus = "Arrived";
-    req.status = "Completed";
-    await req.save();
-
-    const pending = await Request.find({
-      parentRequestId: req.parentRequestId,
-      status: { $in: ["Pending", "Accepted"] }
-    });
-
-    if (pending.length === 0) {
-      await Request.findByIdAndUpdate(
-        req.parentRequestId,
-        { status: "Closed" }
-      );
-    }
-  }
-};
-
-
-/* ================= CANCEL ================= */
 
 /* ================= CANCEL ================= */
 
 const cancelRequest = async (req, res) => {
   try {
     const request = await Request.findById(req.params.id);
-
     if (!request)
       return res.status(404).json({ message: "Request not found" });
 
-    // Cannot cancel if already completed or closed
     if (["Completed", "Closed"].includes(request.status))
       return res.status(400).json({ message: "Cannot cancel this request" });
 
@@ -335,40 +300,21 @@ const cancelRequest = async (req, res) => {
     if (!user)
       return res.status(404).json({ message: "User not found" });
 
-    /* ================= CHECK BAN ================= */
-
-    if (user.bannedUntil && user.bannedUntil > new Date()) {
-      return res.status(403).json({
-        message: `You are banned until ${user.bannedUntil.toDateString()}`
-      });
-    }
-
-    /* ================= COUNT CANCELLATION ================= */
-
-    // Count only if request was Accepted or Pending
-    if (["Accepted", "Pending"].includes(request.status)) {
+    if (["Pending", "Accepted"].includes(request.status)) {
       user.cancelCount = (user.cancelCount || 0) + 1;
     }
-
-    /* ================= APPLY BAN IF LIMIT REACHED ================= */
 
     if (user.cancelCount >= 5) {
       const banDate = new Date();
       banDate.setMonth(banDate.getMonth() + 1);
-
       user.bannedUntil = banDate;
-      user.cancelCount = 0; // reset after ban
+      user.cancelCount = 0;
     }
 
     await user.save();
 
-    /* ================= UPDATE REQUEST ================= */
-
     request.status = "Rejected";
-    request.deliveryStatus = "Cancelled";
     await request.save();
-
-    /* ================= RESTORE STOCK ================= */
 
     if (request.stockId) {
       const stock = await Stock.findById(request.stockId);
@@ -377,8 +323,6 @@ const cancelRequest = async (req, res) => {
         await stock.save();
       }
     }
-
-    /* ================= UPDATE PARENT STATUS ================= */
 
     if (request.parentRequestId) {
       const children = await Request.find({
@@ -397,23 +341,32 @@ const cancelRequest = async (req, res) => {
       await parent.save();
     }
 
-    /* ================= RESPONSE ================= */
-
     return res.json({
       message: user.bannedUntil
-        ? "Cancelled. You have been banned for 1 month."
-        : `Cancelled successfully. Remaining chances: ${5 - user.cancelCount}`,
-      cancelCount: user.cancelCount,
-      bannedUntil: user.bannedUntil || null
+        ? "Cancelled. User banned for 1 month."
+        : `Cancelled. Remaining chances: ${5 - user.cancelCount}`
     });
 
-  } catch (err) {
-    res.status(500).json({ message: "Cancel failed" });
+  } catch {
+    return res.status(500).json({ message: "Cancel failed" });
   }
 };
 
+const updateArrivalStatus = async (req, res) => {
+  try {
+    const request = await Request.findById(req.params.id);
+    if (!request)
+      return res.status(404).json({ message: "Request not found" });
 
+    request.deliveryStatus = "Delivered";
+    request.status = "Completed";
+    await request.save();
 
+    return res.json({ message: "Marked as delivered" });
+  } catch {
+    return res.status(500).json({ message: "Update failed" });
+  }
+};
 
 module.exports = {
   createRequest,

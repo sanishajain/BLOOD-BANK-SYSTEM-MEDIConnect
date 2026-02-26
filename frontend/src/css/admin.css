@@ -1,222 +1,232 @@
-* {
-  box-sizing: border-box;
-  font-family: Arial, sans-serif;
-}
+/* =====================================
+   ADMIN DASHBOARD – STRICT SCOPED CSS
+   Affects ONLY .admin-layout
+===================================== */
 
 .admin-layout {
-  display: flex;
   min-height: 100vh;
-  background: #f5f7fb;
+  display: flex;
+  background: linear-gradient(135deg, #fff7ed, #508492);
+  font-family: "Inter", "Segoe UI", sans-serif;
 }
 
-/* Sidebar */
-.sidebar {
-  width: 230px;
-  background: #1e293b;
-  color: white;
-  padding: 20px;
+/* ================= SIDEBAR ================= */
+
+.admin-layout .sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #7c6df2, #9b8cff);
+  padding: 35px 22px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  box-shadow: 8px 0 30px rgba(0, 0, 0, 0.08);
 }
 
-.sidebar h2 {
+.admin-layout .sidebar h2 {
+  color: #fff;
   text-align: center;
-  margin-bottom: 20px;
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 35px;
+  letter-spacing: 1px;
 }
 
-.sidebar button {
-  padding: 10px;
+.admin-layout .sidebar button {
+  background: rgba(255, 255, 255, 0.12);
   border: none;
-  background: #334155;
-  color: white;
+  padding: 12px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
   cursor: pointer;
-  border-radius: 6px;
-  transition: 0.2s;
+  transition: all 0.2s ease;
 }
 
-.sidebar button:hover {
-  background: #475569;
+.admin-layout .sidebar button:hover {
+  background: #fff;
+  color: #6d5dfc;
+  transform: translateX(5px);
 }
 
-.sidebar .logout {
+.admin-layout .sidebar .logout {
   margin-top: auto;
-  background: #dc2626;
+  background: #ff6b6b;
 }
 
-.sidebar .logout:hover {
-  background: #b91c1c;
+.admin-layout .sidebar .logout:hover {
+  background: #ff4d4d;
+  color: #fff;
 }
 
-/* Main Area */
-.main-content {
+/* ================= MAIN CONTENT ================= */
+
+.admin-layout .main-content {
   flex: 1;
-  padding: 20px;
-  overflow-y: auto;
+  padding: 45px 60px;
 }
 
-h2 {
-  margin-bottom: 10px;
-  color: #1e293b;
+.admin-layout .main-content h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  color: #111827;
 }
 
-/* Forms */
-.add-box {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 20px;
-}
+/* ================= PROFESSIONAL QUOTE BOX ================= */
 
-.add-box select,
-.add-box input {
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid #cbd5f5;
-}
-
-.add-box button {
-  padding: 8px 16px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.add-box button:hover {
-  background: #1d4ed8;
-}
-
-/* Stock Grid */
-.stock-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 15px;
-}
-
-.stock-card {
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  text-align: center;
-}
-
-.stock-card.low {
-  border: 2px solid #dc2626;
-}
-
-.stock-card h3 {
-  margin-bottom: 8px;
-}
-
-.stock-card input {
-  width: 80%;
-  padding: 6px;
-  margin: 8px 0;
-  border-radius: 5px;
-  border: 1px solid #cbd5f5;
-}
-
-.stock-card .warn {
-  color: #dc2626;
-  font-size: 13px;
-}
-
-.stock-card .del {
-  margin-top: 8px;
-  background: #dc2626;
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-.stock-card .del:hover {
-  background: #b91c1c;
-}
-
-/* Cards */
-.card {
-  background: white;
-  padding: 15px;
-  border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-/* Rows */
-.row {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  padding: 10px 0;
-  border-bottom: 1px solid #e5e7eb;
-  align-items: center;
-  gap: 8px;
-}
-
-.row:last-child {
-  border-bottom: none;
-}
-
-.row span {
+.admin-layout .quote-box {
+  background: linear-gradient(135deg, #fdf2f8, #ede9fe);
+  padding: 20px 25px;
+  border-radius: 14px;
+  margin-bottom: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  font-style: italic;
   font-size: 14px;
   color: #374151;
 }
 
-.row button {
-  padding: 6px 10px;
+/* ================= ADD STOCK BOX ================= */
+
+.admin-layout .add-box {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.admin-layout .add-box select,
+.admin-layout .add-box input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1.5px solid #e5e7eb;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+
+.admin-layout .add-box select:focus,
+.admin-layout .add-box input:focus {
+  outline: none;
+  border-color: #6d5dfc;
+  box-shadow: 0 0 0 3px rgba(109, 93, 252, 0.15);
+}
+
+/* ================= STOCK GRID ================= */
+
+.admin-layout .stock-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 20px;
+}
+
+.admin-layout .stock-card {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 14px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+  transition: 0.2s ease;
+}
+
+.admin-layout .stock-card:hover {
+  transform: translateY(-4px);
+}
+
+.admin-layout .stock-card h3 {
+  font-size: 22px;
+  margin-bottom: 12px;
+  color: #6d5dfc;
+}
+
+.admin-layout .stock-card input {
+  width: 70%;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.admin-layout .stock-card.low {
+  border: 2px solid #ff6b6b;
+}
+
+.admin-layout .stock-card .warn {
+  font-size: 12px;
+  color: #ff4d4d;
+  font-weight: 600;
+}
+
+.admin-layout .stock-card .del {
+  background: #ff6b6b;
+  margin-top: 8px;
+}
+
+.admin-layout .stock-card .del:hover {
+  background: #ff4d4d;
+}
+
+/* ================= CARD CONTAINER ================= */
+
+.admin-layout .card {
+  background: #ffffff;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
+}
+
+/* ================= ROW STYLE ================= */
+
+.admin-layout .row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  align-items: center;
+  gap: 12px;
+  padding: 14px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 14px;
+  color: #374151;
+}
+
+.admin-layout .row:last-child {
+  border-bottom: none;
+}
+
+/* ================= BUTTONS ================= */
+
+.admin-layout button {
+  padding: 7px 14px;
+  border-radius: 20px;
   border: none;
-  border-radius: 5px;
-  background: #2563eb;
-  color: white;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
+  background: linear-gradient(135deg, #6d5dfc, #8b7bff);
+  color: #fff;
+  transition: 0.2s ease;
 }
 
-.row button:hover {
-  background: #1d4ed8;
+.admin-layout button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(109, 93, 252, 0.3);
 }
 
-.row button:nth-child(6),
-.row button:nth-child(7) {
-  background: #dc2626;
-}
+/* ================= RESPONSIVE ================= */
 
-.row button:nth-child(6):hover,
-.row button:nth-child(7):hover {
-  background: #b91c1c;
-}
-
-/* Eligibility */
-.row span:last-child {
-  font-weight: bold;
-}
-
-/* Responsive */
 @media (max-width: 900px) {
-  .row {
-    grid-template-columns: repeat(2, 1fr);
-    row-gap: 6px;
-  }
-
-  .sidebar {
-    width: 180px;
-  }
-}
-
-@media (max-width: 600px) {
   .admin-layout {
     flex-direction: column;
   }
 
-  .sidebar {
+  .admin-layout .sidebar {
     width: 100%;
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
+    overflow-x: auto;
   }
 
-  .sidebar button {
-    flex: 1 1 45%;
+  .admin-layout .sidebar button {
+    margin-right: 10px;
+  }
+
+  .admin-layout .main-content {
+    padding: 30px 20px;
   }
 }

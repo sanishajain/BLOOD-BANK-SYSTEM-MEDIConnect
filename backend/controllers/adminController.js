@@ -1,79 +1,102 @@
-
-
+const mongoose = require("mongoose");
 const BloodStock = require("../models/BloodStock");
 const Request = require("../models/Request");
 const User = require("../models/User");
 const Donor = require("../models/Donor");
 
-/* AUTO UPDATE BY DATE */
+/* ================= AUTO UPDATE BY DATE ================= */
 async function autoUpdateByDate() {
-  const now = new Date();
-  await Request.updateMany(
-    {
-      status: "Accepted",
-      deliveryStatus: "Transiting",
-      neededDate: { $lte: now }
-    },
-    {
-      deliveryStatus: "Arrived",
-      status: "Closed",
-      reachDate: now
-    }
-  );
+  try {
+    const now = new Date();
+
+    await Request.updateMany(
+      {
+        status: "Accepted",
+        deliveryStatus: "Transiting",
+        neededDate: { $lte: now }
+      },
+      {
+        $set: {
+          deliveryStatus: "Arrived",
+          status: "Closed",
+          reachDate: now
+        }
+      }
+    );
+  } catch (err) {
+    console.error("Auto update failed:", err.message);
+  }
 }
 
-/* GET ALL REQUESTS (LIFO) */
+/* ================= GET ALL ADMIN REQUESTS ================= */
 const getAllRequests = async (req, res) => {
   try {
     await autoUpdateByDate();
 
     const data = await Request.find({ requestType: "ADMIN" })
-      .populate("userId")
+      .populate("userId", "-password")
       .sort({ createdAt: -1 });
 
-    res.json(data);
-  } catch (e) {
-    res.status(500).json({ message: "Failed to load requests" });
+    return res.status(200).json(data);
+
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to load requests" });
   }
 };
 
-/* APPROVE REQUEST */
+/* ================= APPROVE REQUEST ================= */
 const approveRequest = async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id);
-    if (!request) return res.status(404).json({ message: "Request not found" });
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(400).json({ message: "Invalid request ID" });
+
+    const request = await Request.findById(id);
+    if (!request)
+      return res.status(404).json({ message: "Request not found" });
 
     if (request.status !== "Pending")
       return res.status(400).json({ message: "Already processed" });
 
     const stock = await BloodStock.findOne({ bloodGroup: request.bloodGroup });
-    if (!stock) return res.status(404).json({ message: "Stock not found" });
+    if (!stock)
+      return res.status(404).json({ message: "Stock not found" });
 
     if (stock.units < request.units)
       return res.status(400).json({ message: "Not enough stock" });
 
+    /* Deduct stock */
     stock.units -= request.units;
+    stock.lastUpdated = new Date();
     await stock.save();
 
     request.status = "Accepted";
     request.deliveryStatus = "Transiting";
     await request.save();
 
-    res.json({
+    return res.status(200).json({
       message: "Request approved and transiting",
       request,
       remainingStock: stock.units
     });
-  } catch (e) {
-    res.status(500).json({ message: "Approve failed" });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Approve failed" });
   }
 };
 
-/* REJECT REQUEST */
+/* ================= REJECT REQUEST ================= */
 const rejectRequest = async (req, res) => {
   try {
-    const request = await Request.findById(req.params.id);
-    if (!request) return res.status(404).json({ message: "Request not found" });
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(400).json({ message: "Invalid request ID" });
+
+    const request = await Request.findById(id);
+    if (!request)
+      return res.status(404).json({ message: "Request not found" });
 
     if (request.status !== "Pending")
       return res.status(400).json({ message: "Already processed" });
@@ -81,63 +104,105 @@ const rejectRequest = async (req, res) => {
     request.status = "Rejected";
     await request.save();
 
-    res.json({ message: "Request rejected", request });
-  } catch (e) {
-    res.status(500).json({ message: "Reject failed" });
+    return res.status(200).json({ message: "Request rejected", request });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Reject failed" });
   }
 };
 
-// adminController.js
-
+/* ================= GET ALL USERS ================= */
 const getAllUsers = async (req, res) => {
-  const users = await User.find().select("-password");
-  res.json(users);
-};
-
-const getAllDonors = async (req, res) => {
-  const donors = await Donor.find().select("-password");
-  res.json(donors);
-};
-// controllers/requestController.js
-
-const cancelRequest = async (req, res) => {
-  const { id } = req.params;
-  const request = await Request.findById(id);
-  if (!request) return res.status(404).json({ message: "Not found" });
-
-  request.status = "Cancelled";
-  await request.save();
-
-  const user = await User.findById(request.userId);
-  user.cancelCount += 1;
-
-  if (user.cancelCount >= 3) {
-    user.bannedUntil = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000); // 3 months
+  try {
+    const users = await User.find().select("-password");
+    return res.status(200).json(users);
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to load users" });
   }
-  await user.save();
-
-  res.json({ message: "Cancelled", cancelCount: user.cancelCount });
 };
 
+/* ================= GET ALL DONORS ================= */
+const getAllDonors = async (req, res) => {
+  try {
+    const donors = await Donor.find().select("-password");
+    return res.status(200).json(donors);
+  } catch (err) {
+    return res.status(500).json({ message: "Failed to load donors" });
+  }
+};
 
+/* ================= CANCEL REQUEST ================= */
+const cancelRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(id))
+      return res.status(400).json({ message: "Invalid request ID" });
+
+    const request = await Request.findById(id);
+    if (!request)
+      return res.status(404).json({ message: "Request not found" });
+
+    if (["Accepted", "Closed"].includes(request.status))
+      return res.status(400).json({ message: "Cannot cancel processed request" });
+
+    request.status = "Cancelled";
+    await request.save();
+
+    const user = await User.findById(request.userId);
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    user.cancelCount = (user.cancelCount || 0) + 1;
+
+    if (user.cancelCount >= 3) {
+      user.bannedUntil = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      message: "Request cancelled",
+      cancelCount: user.cancelCount,
+      bannedUntil: user.bannedUntil || null
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Cancel failed" });
+  }
+};
+
+/* ================= MANUAL BAN ================= */
 const approveBan = async (req, res) => {
-  const { userId } = req.params;
-  const user = await User.findById(userId);
-  if (!user) return res.status(404).json({ message: "User not found" });
+  try {
+    const { userId } = req.params;
 
-  user.bannedUntil = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
-  await user.save();
+    if (!mongoose.Types.ObjectId.isValid(userId))
+      return res.status(400).json({ message: "Invalid user ID" });
 
-  res.json({ message: "User banned for 3 months" });
+    const user = await User.findById(userId);
+    if (!user)
+      return res.status(404).json({ message: "User not found" });
+
+    user.bannedUntil = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+    await user.save();
+
+    return res.status(200).json({
+      message: "User banned for 3 months",
+      bannedUntil: user.bannedUntil
+    });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Ban failed" });
+  }
 };
 
 module.exports = {
   getAllRequests,
   approveRequest,
   rejectRequest,
-   getAllUsers,
-    getAllDonors,
+  getAllUsers,
+  getAllDonors,
   cancelRequest,
   approveBan
 };

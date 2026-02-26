@@ -114,10 +114,17 @@ export default function AdminDashboard() {
 
   const isLow = u => u <= 5;
 
-  const isEligible = (date) => {
-    if (!date) return true;
-    const diff = (new Date() - new Date(date)) / (1000 * 60 * 60 * 24);
-    return diff >= 90;
+  // ✅ CORRECT ELIGIBILITY LOGIC (using nextDonationDate)
+  const isEligible = (nextDonationDate) => {
+    if (!nextDonationDate) return true;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const nextDate = new Date(nextDonationDate);
+    nextDate.setHours(0, 0, 0, 0);
+
+    return nextDate <= today;
   };
 
   return (
@@ -179,6 +186,39 @@ export default function AdminDashboard() {
           </>
         )}
 
+        {view === "donors" && (
+          <>
+            <h2>Registered Donors</h2>
+            <div className="card">
+              {donors.map(d => (
+                <div key={d._id} className="row">
+                  <span>{d.username}</span>
+                  <span>{d.bloodGroup}</span>
+                  <span>{d.mobileNumber || "-"}</span>
+
+                  <span>
+                    {d.lastDonationDate
+                      ? new Date(d.lastDonationDate).toLocaleDateString()
+                      : "Never"}
+                  </span>
+
+                  <span>
+                    {d.nextDonationDate
+                      ? new Date(d.nextDonationDate).toLocaleDateString()
+                      : "Eligible Now"}
+                  </span>
+
+                  <span>
+                    {isEligible(d.nextDonationDate)
+                      ? "Eligible"
+                      : "Not Eligible"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         {view === "requests" && (
           <>
             <h2>Pending Requests</h2>
@@ -233,27 +273,6 @@ export default function AdminDashboard() {
                   </div>
                 );
               })}
-            </div>
-          </>
-        )}
-
-        {view === "donors" && (
-          <>
-            <h2>Registered Donors</h2>
-            <div className="card">
-              {donors.map(d => (
-                <div key={d._id} className="row">
-                  <span>{d.username}</span>
-                  <span>{d.bloodGroup}</span>
-                  <span>{d.mobileNumber || "-"}</span>
-                  <span>
-                    {d.lastDonationDate
-                      ? new Date(d.lastDonationDate).toLocaleDateString()
-                      : "Never"}
-                  </span>
-                  <span>{isEligible(d.lastDonationDate) ? "Eligible" : "Not Eligible"}</span>
-                </div>
-              ))}
             </div>
           </>
         )}

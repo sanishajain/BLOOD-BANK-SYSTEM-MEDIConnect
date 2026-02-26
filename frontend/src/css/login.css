@@ -1,8 +1,5 @@
-/* RESET */
-* {
-  box-sizing: border-box;
-  font-family: "Inter", "Segoe UI", sans-serif;
-}
+/* Import Premium Font (scoped usage only) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* PAGE BACKGROUND */
 .login-page {
@@ -11,21 +8,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Soft floating glow background effect */
+.login-page::before {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(255,255,255,0.25), transparent 70%);
+  top: -100px;
+  left: -100px;
+  z-index: 0;
+}
+
+.login-page::after {
+  content: "";
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.2), transparent 70%);
+  bottom: -120px;
+  right: -120px;
+  z-index: 0;
 }
 
 /* MAIN CONTAINER */
-.login-container {
+.login-page .login-container {
   width: 900px;
   height: 520px;
   background: #ffffff;
-  border-radius: 18px;
+  border-radius: 20px;
   display: flex;
   overflow: hidden;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 35px 70px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
 }
 
 /* LEFT PANEL */
-.login-left {
+.login-page .login-left {
   flex: 1;
   background: linear-gradient(135deg, #7c6df2, #9b8cff);
   color: #fff;
@@ -35,61 +60,63 @@
   justify-content: center;
 }
 
-.login-left h1 {
-  font-size: 34px;
+.login-page .login-left h1 {
+  font-size: 36px;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
-.login-left p {
+.login-page .login-left p {
   font-size: 15px;
-  opacity: 0.9;
+  opacity: 0.95;
   line-height: 1.6;
 }
 
 /* RIGHT PANEL */
-.login-right {
+.login-page .login-right {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: #ffffff;
 }
 
 /* CARD */
-.card {
+.login-page .card {
   width: 100%;
   max-width: 340px;
 }
 
-.card h2 {
-  font-size: 24px;
+/* TITLE */
+.login-page .card h2 {
+  font-size: 26px;
   font-weight: 700;
-  margin-bottom: 28px;
+  margin-bottom: 30px;
   color: #111827;
   text-transform: capitalize;
 }
 
 /* INPUTS */
-.card input {
+.login-page .card input {
   width: 100%;
-  padding: 13px 14px;
-  margin-bottom: 16px;
-  border-radius: 8px;
+  padding: 14px 15px;
+  margin-bottom: 18px;
+  border-radius: 10px;
   border: 1.5px solid #e5e7eb;
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition: all 0.25s ease;
 }
 
-.card input:focus {
+.login-page .card input:focus {
   outline: none;
   border-color: #6d5dfc;
-  box-shadow: 0 0 0 3px rgba(109, 93, 252, 0.15);
+  box-shadow: 0 0 0 4px rgba(109, 93, 252, 0.15);
 }
 
 /* BUTTON */
-.card button {
+.login-page .card button {
   width: 100%;
-  padding: 13px;
+  padding: 14px;
   border-radius: 30px;
   border: none;
   background: linear-gradient(135deg, #6d5dfc, #8b7bff);
@@ -98,56 +125,43 @@
   font-weight: 600;
   cursor: pointer;
   margin-top: 8px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.25s ease;
 }
 
-.card button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 10px 25px rgba(109, 93, 252, 0.35);
+.login-page .card button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(109, 93, 252, 0.35);
 }
 
 /* LINKS */
-.card p {
-  margin-top: 16px;
-  text-align: center;
-  font-size: 13px;
-  color: #6b7280;
-  cursor: pointer;
-}
-
-.card p:hover {
-  color: #4f46e5;
-  text-decoration: underline;
-}
-
-/* FORGOT PASSWORD */
-.forgot {
+.login-page .card p {
   margin-top: 18px;
   text-align: center;
   font-size: 13px;
   color: #6b7280;
   cursor: pointer;
+  transition: 0.2s ease;
 }
 
-.forgot:hover {
+.login-page .card p:hover {
   color: #4f46e5;
   text-decoration: underline;
 }
 
 /* RESPONSIVE */
 @media (max-width: 900px) {
-  .login-container {
+  .login-page .login-container {
     width: 95%;
     height: auto;
     flex-direction: column;
   }
 
-  .login-left {
+  .login-page .login-left {
     padding: 40px;
     text-align: center;
   }
 
-  .login-right {
+  .login-page .login-right {
     padding: 40px 0;
   }
 }
